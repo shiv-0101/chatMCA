@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatMCA</title>
+    <link href="https://www.google.com/search?q=https://cdn.jsdelivr.net/npm/tailwindcss%402.2.19/dist/tailwind.min.css"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 1.5rem;
+            background-color: #f7f7f7;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            padding: 0.75rem 1.25rem;
+            border-radius: 1.25rem;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .user-message {
+            background-color: #1a73e8;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.5rem;
+        }
+
+        .assistant-message {
+            background-color: #f0f4f9;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.5rem;
+        }
+
+        .chat-input-area {
+            display: flex;
+            padding: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+            background-color: white;
+        }
+
+        .input-box {
+            flex-grow: 1;
+            padding: 0.75rem 1.25rem;
+            border-radius: 9999px;
+            background-color: #f7f7f7;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .input-box:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+        }
+
+        .send-button {
+            padding: 0.75rem 1.5rem;
+            background-color: #1a73e8;
+            color: white;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .send-button:hover {
+            background-color: #1664c1;
+        }
+
+        .send-button:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="chat-container">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            ChatMCA
+        </div>
+
+        <!-- Chat Messages Display -->
+        <div id="messages" class="chat-messages">
+            <!-- Initial welcome message -->
+            <div class="assistant-message message-bubble">
+                Hello! I am ChatMCA. How can I help you today?
+            </div>
+
+            <!-- Existing messages from session will be rendered here -->
+            {% for message in chat_history %}
+            {% if message.role == 'user' %}
+            <div class="user-message message-bubble">
+                {{ message.content }}
+            </div>
+            {% else %}
+            <div class="assistant-message message-bubble">
+                {{ message.content }}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Input Form -->
+        <div class="chat-input-area">
+            <form id="chat-form" method="post" class="w-full flex space-x-4">
+                {% csrf_token %}
+                <input type="text" name="message" id="chat-input" placeholder="Send a message..." class="input-box">
+                <button type="submit" id="send-button" class="send-button">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const messagesContainer = document.getElementById('messages');
+        const sendButton = document.getElementById('send-button');
+
+        // Function to scroll to the bottom of the chat container
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Add a message to the UI
+        function addMessage(role, content) {
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.classList.add('message-bubble');
+
+            if (role === 'user') {
+                bubbleDiv.classList.add('user-message');
+            } else {
+                bubbleDiv.classList.add('assistant-message');
+            }
+            bubbleDiv.textContent = content;
+            messagesContainer.appendChild(bubbleDiv);
+            scrollToBottom();
+        }
+
+        // Handle form submission
+        chatForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const userMessage = chatInput.value.trim();
+            if (!userMessage) return;
+
+            // Display the user's message immediately
+            addMessage('user', userMessage);
+            chatInput.value = '';
+            sendButton.disabled = true;
+
+            // Post the message to the Django view
+            try {
+                const formData = new FormData();
+                formData.append('message', userMessage);
+
+                const response = await fetch('', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const assistantMessage = data.chat_history[data.chat_history.length - 1];
+                    addMessage('assistant', assistantMessage.content);
+                } else {
+                    const errorData = await response.json();
+                    console.error("Error from server:", errorData.error);
+                    addMessage('assistant', `Error: ${errorData.error}`);
+                }
+            } catch (error) {
+                console.error("Network or fetch error:", error);
+                addMessage('assistant', "I'm sorry, an error occurred. Please try again.");
+            } finally {
+                sendButton.disabled = false;
+            }
+        });
+
+        // Initial scroll to bottom when the page loads
+        window.onload = scrollToBottom;
+    </script>
+
+</body>
+
+</html>
