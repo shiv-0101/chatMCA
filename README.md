@@ -10,7 +10,7 @@ A Django-based AI chat application project.
 ## Project Structure
 ```
 chatMCA/
-├── chatMCA/         # Django project settings
+├── Files/         # Django project settings
 ├── core/            # Main app (models, views, admin)
 ├── templates/       # HTML templates
 ├── db.sqlite3       # SQLite database
